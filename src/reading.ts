@@ -78,13 +78,22 @@ function lastNonEmptyDescendant(el: Element): Element | null {
   return cur;
 }
 
+const FIRST_LEXICAL_WORD_RE = /[\p{L}\p{N}]+/u;
+
 function replaceTextNode(node: Text, algo: ParsedAlgorithm, skipFirst: boolean): void {
   const text = node.nodeValue ?? "";
   if (text.length < 2) return;
 
+  let skipPos = -1;
+  if (skipFirst) {
+    FIRST_LEXICAL_WORD_RE.lastIndex = 0;
+    const m = FIRST_LEXICAL_WORD_RE.exec(text);
+    if (m) skipPos = m.index;
+  }
+
   let spans = findWordSpans(text, algo);
-  if (skipFirst && spans.length > 0) {
-    spans = spans.slice(1);
+  if (skipPos >= 0) {
+    spans = spans.filter((sp) => sp.start !== skipPos);
   }
   if (spans.length === 0) return;
 
