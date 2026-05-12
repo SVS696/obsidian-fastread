@@ -12,16 +12,19 @@ export interface ReadingOptions {
 }
 
 export function decorateElement(root: HTMLElement, algo: ParsedAlgorithm, opts: ReadingOptions): void {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+  const doc = root.ownerDocument;
+  if (!doc) return;
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node: Node) {
       const text = node.nodeValue;
       if (!text || text.trim().length === 0) return NodeFilter.FILTER_REJECT;
       let p: Node | null = node.parentNode;
-      while (p && p instanceof Element) {
-        if (SKIP_TAGS.has(p.tagName)) return NodeFilter.FILTER_REJECT;
-        if (p.classList && p.classList.contains("fastread-highlight")) return NodeFilter.FILTER_REJECT;
-        if (p.classList && p.classList.contains("fastread-rest")) return NodeFilter.FILTER_REJECT;
-        p = p.parentNode;
+      while (p && p.nodeType === Node.ELEMENT_NODE) {
+        const el = p as Element;
+        if (SKIP_TAGS.has(el.tagName)) return NodeFilter.FILTER_REJECT;
+        if (el.classList.contains("fastread-highlight")) return NodeFilter.FILTER_REJECT;
+        if (el.classList.contains("fastread-rest")) return NodeFilter.FILTER_REJECT;
+        p = el.parentNode;
       }
       return NodeFilter.FILTER_ACCEPT;
     },
@@ -55,20 +58,23 @@ function replaceTextNode(node: Text, algo: ParsedAlgorithm, skipFirst: boolean):
   }
   if (spans.length === 0) return;
 
-  const frag = document.createDocumentFragment();
+  const doc = node.ownerDocument;
+  if (!doc) return;
+
+  const frag = doc.createDocumentFragment();
   let cursor = 0;
 
   for (const span of spans) {
     if (span.start > cursor) {
-      frag.appendChild(document.createTextNode(text.slice(cursor, span.start)));
+      frag.appendChild(doc.createTextNode(text.slice(cursor, span.start)));
     }
-    const bold = document.createElement("span");
+    const bold = doc.createElement("span");
     bold.className = "fastread-highlight";
     bold.textContent = text.slice(span.start, span.boldEnd);
     frag.appendChild(bold);
 
     if (span.boldEnd < span.end) {
-      const rest = document.createElement("span");
+      const rest = doc.createElement("span");
       rest.className = "fastread-rest";
       rest.textContent = text.slice(span.boldEnd, span.end);
       frag.appendChild(rest);
@@ -76,7 +82,7 @@ function replaceTextNode(node: Text, algo: ParsedAlgorithm, skipFirst: boolean):
     cursor = span.end;
   }
   if (cursor < text.length) {
-    frag.appendChild(document.createTextNode(text.slice(cursor)));
+    frag.appendChild(doc.createTextNode(text.slice(cursor)));
   }
 
   node.replaceWith(frag);

@@ -54,23 +54,23 @@ export default class FastreadPlugin extends Plugin {
     this.updateStatusBar();
 
     this.addCommand({
-      id: "fastread-toggle",
-      name: "Toggle Fastread",
+      id: "toggle",
+      name: "Toggle",
       callback: () => this.toggleEnabled(),
     });
     this.addCommand({
-      id: "fastread-cycle",
-      name: "Cycle Fastread intensity",
+      id: "cycle-intensity",
+      name: "Cycle intensity",
       callback: () => this.cyclePreset(),
     });
     this.addCommand({
-      id: "fastread-increase",
-      name: "Increase Fastread intensity",
+      id: "increase-intensity",
+      name: "Increase intensity",
       callback: () => this.adjustRatio(+0.05),
     });
     this.addCommand({
-      id: "fastread-decrease",
-      name: "Decrease Fastread intensity",
+      id: "decrease-intensity",
+      name: "Decrease intensity",
       callback: () => this.adjustRatio(-0.05),
     });
 
@@ -79,15 +79,16 @@ export default class FastreadPlugin extends Plugin {
   }
 
   onunload() {
-    document.body.classList.remove("fastread-dim-rest");
+    activeDocument.body.classList.remove("fastread-dim-rest");
   }
 
   private applyBodyClasses() {
-    document.body.classList.toggle("fastread-dim-rest", this.settings.dimRestOfWord);
+    activeDocument.body.classList.toggle("fastread-dim-rest", this.settings.dimRestOfWord);
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const saved = (await this.loadData()) as Partial<FastreadSettings> | null;
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, saved ?? {});
     if (!Array.isArray(this.settings.presets) || this.settings.presets.length < 2) {
       this.settings.presets = DEFAULT_SETTINGS.presets;
     }

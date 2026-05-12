@@ -24,3 +24,8 @@ body.fastread-dim-rest .fastread-rest {
 .fastread-statusbar.is-off {
   color: var(--text-muted);
 }
+
+.fastread-common-words-textarea {
+  width: 100%;
+  font-family: var(--font-monospace);
+}

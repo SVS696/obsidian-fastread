@@ -147,8 +147,7 @@ export class FastreadSettingTab extends PluginSettingTab {
           );
         });
       ta.inputEl.rows = 10;
-      ta.inputEl.style.width = "100%";
-      ta.inputEl.style.fontFamily = "var(--font-monospace)";
+      ta.inputEl.addClass("fastread-common-words-textarea");
     });
     wordsSetting.addExtraButton((btn) =>
       btn
