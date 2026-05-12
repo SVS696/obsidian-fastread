@@ -42,10 +42,40 @@ export function decorateElement(root: HTMLElement, algo: ParsedAlgorithm, opts: 
   }
 }
 
-function isAfterBold(node: Text): boolean {
-  const prev = node.previousSibling;
-  if (!prev || prev.nodeType !== Node.ELEMENT_NODE) return false;
-  return BOLD_TAGS.has((prev as Element).tagName);
+const BLOCK_TAGS = new Set([
+  "P", "DIV", "LI", "UL", "OL", "H1", "H2", "H3", "H4", "H5", "H6",
+  "BLOCKQUOTE", "PRE", "TABLE", "TR", "TD", "TH", "HR", "ARTICLE", "SECTION",
+]);
+
+function isAfterBold(node: Node): boolean {
+  let cursor: Node | null = node;
+  while (cursor) {
+    let prev: Node | null = cursor.previousSibling;
+    while (prev && prev.nodeType === Node.TEXT_NODE && !(prev.nodeValue ?? "").trim()) {
+      prev = prev.previousSibling;
+    }
+    if (prev) {
+      if (prev.nodeType !== Node.ELEMENT_NODE) return false;
+      const el = prev as Element;
+      if (BOLD_TAGS.has(el.tagName)) return true;
+      const last = lastNonEmptyDescendant(el);
+      if (last) return BOLD_TAGS.has(last.tagName);
+      return false;
+    }
+    const parent: Node | null = cursor.parentNode;
+    if (!parent || parent.nodeType !== Node.ELEMENT_NODE) return false;
+    if (BLOCK_TAGS.has((parent as Element).tagName)) return false;
+    cursor = parent;
+  }
+  return false;
+}
+
+function lastNonEmptyDescendant(el: Element): Element | null {
+  let cur: Element | null = el;
+  while (cur && cur.lastElementChild) {
+    cur = cur.lastElementChild;
+  }
+  return cur;
 }
 
 function replaceTextNode(node: Text, algo: ParsedAlgorithm, skipFirst: boolean): void {
