@@ -1,0 +1,10 @@
+{
+  "id": "fastread",
+  "name": "Fastread",
+  "version": "1.0.0",
+  "minAppVersion": "1.4.0",
+  "description": "Bold the leading letters of each word for faster reading. Toggle and adjust intensity from the status bar without changing your notes.",
+  "author": "Vladislav Samorodov",
+  "authorUrl": "https://github.com/SVS696",
+  "isDesktopOnly": false
+}

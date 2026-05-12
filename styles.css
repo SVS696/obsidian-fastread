@@ -1,0 +1,22 @@
+.fastread-highlight {
+  font-weight: 700;
+}
+
+.fastread-rest {
+  opacity: 0.7;
+}
+
+.fastread-statusbar {
+  cursor: pointer;
+  user-select: none;
+  padding: 0 6px;
+}
+
+.fastread-statusbar.is-on {
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
+.fastread-statusbar.is-off {
+  color: var(--text-muted);
+}
