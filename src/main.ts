@@ -11,6 +11,12 @@ import {
   withRestRatio,
 } from "./algorithm";
 
+function normalizeAlgorithmString(raw: string): string {
+  if (!raw) return DEFAULT_ALGORITHM;
+  if (!/^\s*[+-]\s/.test(raw)) return raw;
+  return serializeAlgorithm(parseAlgorithm(raw));
+}
+
 export default class FastreadPlugin extends Plugin {
   settings!: FastreadSettings;
   private statusBarEl: HTMLElement | null = null;
@@ -24,13 +30,16 @@ export default class FastreadPlugin extends Plugin {
     const provider: FastreadStateProvider = {
       isEnabled: () => this.settings.enabled,
       getAlgorithm: () => this.algoCache,
+      getSkipWordAfterBold: () => this.settings.skipWordAfterBold,
       version: () => this.stateVersion,
     };
     this.registerEditorExtension(createFastreadEditorExtension(provider));
 
     this.registerMarkdownPostProcessor((el) => {
       if (!this.settings.enabled) return;
-      decorateElement(el, this.algoCache);
+      decorateElement(el, this.algoCache, {
+        skipWordAfterBold: this.settings.skipWordAfterBold,
+      });
     });
 
     this.statusBarEl = this.addStatusBarItem();
@@ -66,10 +75,15 @@ export default class FastreadPlugin extends Plugin {
     });
 
     this.addSettingTab(new FastreadSettingTab(this.app, this));
+    this.applyBodyClasses();
   }
 
   onunload() {
-    // editor extensions and post-processors are auto-unregistered
+    document.body.classList.remove("fastread-dim-rest");
+  }
+
+  private applyBodyClasses() {
+    document.body.classList.toggle("fastread-dim-rest", this.settings.dimRestOfWord);
   }
 
   async loadSettings() {
@@ -80,6 +94,13 @@ export default class FastreadPlugin extends Plugin {
     if (!Array.isArray(this.settings.commonWords)) {
       this.settings.commonWords = DEFAULT_SETTINGS.commonWords.slice();
     }
+    if (typeof this.settings.skipWordAfterBold !== "boolean") {
+      this.settings.skipWordAfterBold = DEFAULT_SETTINGS.skipWordAfterBold;
+    }
+    if (typeof this.settings.dimRestOfWord !== "boolean") {
+      this.settings.dimRestOfWord = DEFAULT_SETTINGS.dimRestOfWord;
+    }
+    this.settings.algorithm = normalizeAlgorithmString(this.settings.algorithm);
   }
 
   async saveAndRefresh() {
@@ -87,13 +108,8 @@ export default class FastreadPlugin extends Plugin {
     this.stateVersion++;
     await this.saveData(this.settings);
     this.updateStatusBar();
+    this.applyBodyClasses();
     this.refreshReadingViews();
-  }
-
-  syncExcludeFlag() {
-    const a = parseAlgorithm(this.settings.algorithm);
-    a.exclude = this.settings.excludeCommonWords;
-    this.settings.algorithm = serializeAlgorithm(a);
   }
 
   currentRatio(): number {

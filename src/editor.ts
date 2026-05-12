@@ -4,10 +4,13 @@ import { syntaxTree } from "@codemirror/language";
 import { findWordSpans, ParsedAlgorithm, parseAlgorithm } from "./algorithm";
 
 const SKIP_NODE_TYPES = /(?:formatting|hashtag|tag|url|link|inline-code|code-block|HyperMD-codeblock|math|frontmatter)/i;
+const STRONG_NODE_TYPES = /^(Strong|HyperMD-Strong|cm-strong)/i;
+const WORD_AFTER_BOLD_RE = /[\p{L}\p{N}]+/u;
 
 export interface FastreadStateProvider {
   isEnabled(): boolean;
   getAlgorithm(): ParsedAlgorithm;
+  getSkipWordAfterBold(): boolean;
   version(): number;
 }
 
@@ -15,21 +18,20 @@ const boldMark = Decoration.mark({ class: "fastread-highlight" });
 const restMark = Decoration.mark({ class: "fastread-rest" });
 
 export function createFastreadEditorExtension(state: FastreadStateProvider) {
-  let lastVersion = -1;
-
   return ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
+      private lastVersion: number;
 
       constructor(view: EditorView) {
         this.decorations = this.build(view);
-        lastVersion = state.version();
+        this.lastVersion = state.version();
       }
 
       update(u: ViewUpdate) {
-        if (u.docChanged || u.viewportChanged || state.version() !== lastVersion) {
+        if (u.docChanged || u.viewportChanged || state.version() !== this.lastVersion) {
           this.decorations = this.build(u.view);
-          lastVersion = state.version();
+          this.lastVersion = state.version();
         }
       }
 
@@ -38,18 +40,21 @@ export function createFastreadEditorExtension(state: FastreadStateProvider) {
         if (!state.isEnabled()) return builder.finish();
         const algo = state.getAlgorithm();
         const doc = view.state.doc;
+        const skipWordPositions = state.getSkipWordAfterBold()
+          ? collectSkipWordPositions(view)
+          : null;
 
         for (const { from, to } of view.visibleRanges) {
           const skipRanges = collectSkipRanges(view, from, to);
           let cursor = from;
           for (const sr of skipRanges) {
             if (sr.from > cursor) {
-              this.decorateRange(builder, doc.sliceString(cursor, sr.from), cursor, algo);
+              this.decorateRange(builder, doc.sliceString(cursor, sr.from), cursor, algo, skipWordPositions);
             }
             cursor = Math.max(cursor, sr.to);
           }
           if (cursor < to) {
-            this.decorateRange(builder, doc.sliceString(cursor, to), cursor, algo);
+            this.decorateRange(builder, doc.sliceString(cursor, to), cursor, algo, skipWordPositions);
           }
         }
         return builder.finish();
@@ -60,10 +65,12 @@ export function createFastreadEditorExtension(state: FastreadStateProvider) {
         text: string,
         offset: number,
         algo: ParsedAlgorithm,
+        skipWordPositions: Set<number> | null,
       ): void {
         const spans = findWordSpans(text, algo);
         for (const sp of spans) {
           const absStart = offset + sp.start;
+          if (skipWordPositions && skipWordPositions.has(absStart)) continue;
           const absBoldEnd = offset + sp.boldEnd;
           const absEnd = offset + sp.end;
           if (absBoldEnd > absStart) {
@@ -111,6 +118,31 @@ function collectSkipRanges(view: EditorView, from: number, to: number): Range[] 
     }
   }
   return merged;
+}
+
+function collectSkipWordPositions(view: EditorView): Set<number> {
+  const positions = new Set<number>();
+  const doc = view.state.doc;
+  try {
+    const tree = syntaxTree(view.state);
+    for (const { from, to } of view.visibleRanges) {
+      tree.iterate({
+        from,
+        to,
+        enter(node) {
+          if (!STRONG_NODE_TYPES.test(node.type.name)) return;
+          const after = node.to;
+          if (after >= doc.length) return;
+          const tail = doc.sliceString(after, Math.min(after + 200, doc.length));
+          const m = WORD_AFTER_BOLD_RE.exec(tail);
+          if (m) positions.add(after + m.index);
+        },
+      });
+    }
+  } catch {
+    // syntax tree not ready
+  }
+  return positions;
 }
 
 export { parseAlgorithm };

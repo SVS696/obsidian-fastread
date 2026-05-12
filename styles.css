@@ -3,6 +3,10 @@
 }
 
 .fastread-rest {
+  /* default: no dimming */
+}
+
+body.fastread-dim-rest .fastread-rest {
   opacity: 0.7;
 }
 

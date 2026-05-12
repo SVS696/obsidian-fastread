@@ -8,6 +8,8 @@ export interface FastreadSettings {
   presets: number[];
   excludeCommonWords: boolean;
   commonWords: string[];
+  skipWordAfterBold: boolean;
+  dimRestOfWord: boolean;
 }
 
 export const DEFAULT_SETTINGS: FastreadSettings = {
@@ -16,6 +18,8 @@ export const DEFAULT_SETTINGS: FastreadSettings = {
   presets: [0, 0.2, 0.4, 0.6],
   excludeCommonWords: true,
   commonWords: DEFAULT_COMMON_WORDS.slice(),
+  skipWordAfterBold: true,
+  dimRestOfWord: true,
 };
 
 function parseWordList(raw: string): string[] {
@@ -54,8 +58,8 @@ export class FastreadSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Algorithm string")
       .setDesc(
-        "Format: '<sign> <s1> <s2> ... <sN> <ratio>'. Sign '-' skips common English words; '+' highlights all. " +
-          "Each size sets how many leading characters to bold for words of that length. Final number is the bold fraction for longer words.",
+        "Format: '<s1> <s2> ... <sN> <ratio>'. Each size sets how many leading characters to bold for words of that length " +
+          "(s1 = 1-letter words, s2 = 2-letter, etc.). The final number is the bold fraction for longer words.",
       )
       .addText((t) =>
         t
@@ -90,12 +94,37 @@ export class FastreadSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Dim rest of word")
+      .setDesc(
+        "Reduce opacity on the un-highlighted part of each word for a two-tone look. " +
+          "Turn off if you'd rather have **bold** words stay fully bold.",
+      )
+      .addToggle((t) =>
+        t.setValue(this.plugin.settings.dimRestOfWord).onChange(async (v) => {
+          this.plugin.settings.dimRestOfWord = v;
+          await this.plugin.saveAndRefresh();
+        }),
+      );
+
+    new Setting(containerEl)
+      .setName("Skip word after bold emphasis")
+      .setDesc(
+        "When a word follows a **bold** span (possibly separated by punctuation/spaces), leave it un-highlighted. " +
+          "Helps preserve the bold word's visual stress without competing with the highlighter on the next word.",
+      )
+      .addToggle((t) =>
+        t.setValue(this.plugin.settings.skipWordAfterBold).onChange(async (v) => {
+          this.plugin.settings.skipWordAfterBold = v;
+          await this.plugin.saveAndRefresh();
+        }),
+      );
+
+    new Setting(containerEl)
       .setName("Exclude common words")
-      .setDesc("Skip words from the list below. Equivalent to '-' sign in the algorithm string.")
+      .setDesc("Skip every word from the list below (case-insensitive).")
       .addToggle((t) =>
         t.setValue(this.plugin.settings.excludeCommonWords).onChange(async (v) => {
           this.plugin.settings.excludeCommonWords = v;
-          this.plugin.syncExcludeFlag();
           await this.plugin.saveAndRefresh();
         }),
       );

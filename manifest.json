@@ -1,7 +1,7 @@
 {
   "id": "fastread",
   "name": "Fastread",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "minAppVersion": "1.4.0",
   "description": "Bold the leading letters of each word for faster reading. Toggle and adjust intensity from the status bar without changing your notes.",
   "author": "Vladislav Samorodov",

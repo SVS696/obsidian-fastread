@@ -5,7 +5,7 @@ export interface ParsedAlgorithm {
   commonWords?: Set<string>;
 }
 
-export const DEFAULT_ALGORITHM = "- 0 1 1 2 0.4";
+export const DEFAULT_ALGORITHM = "0 1 1 2 0.4";
 
 export const DEFAULT_COMMON_WORDS: string[] = [
   // English
@@ -42,13 +42,19 @@ export function parseAlgorithm(algorithm: string): ParsedAlgorithm {
   const fallback: ParsedAlgorithm = { exclude: true, sizes: [0, 1, 1, 2], restRatio: 0.4 };
   if (!algorithm) return fallback;
   const parts = algorithm.trim().split(/\s+/);
-  if (parts.length < 3) return fallback;
+  if (parts.length < 2) return fallback;
   try {
-    const exclude = parts[0] !== "+";
+    let cursor = 0;
+    let exclude = true;
+    if (parts[0] === "+" || parts[0] === "-") {
+      exclude = parts[0] === "-";
+      cursor = 1;
+    }
+    if (parts.length - cursor < 2) return fallback;
     const restRatio = Number(parts[parts.length - 1]);
     if (!Number.isFinite(restRatio)) return fallback;
     const sizes: number[] = [];
-    for (let i = 1; i < parts.length - 1; i++) {
+    for (let i = cursor; i < parts.length - 1; i++) {
       const n = Number(parts[i]);
       sizes.push(Number.isFinite(n) ? n : 0);
     }
@@ -59,7 +65,7 @@ export function parseAlgorithm(algorithm: string): ParsedAlgorithm {
 }
 
 export function serializeAlgorithm(a: ParsedAlgorithm): string {
-  return [a.exclude ? "-" : "+", ...a.sizes, a.restRatio].join(" ");
+  return [...a.sizes, a.restRatio].join(" ");
 }
 
 export function withRestRatio(algorithm: string, restRatio: number): string {

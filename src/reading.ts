@@ -5,7 +5,13 @@ const SKIP_TAGS = new Set([
   "MATH", "SVG", "CANVAS", "TEXTAREA", "INPUT",
 ]);
 
-export function decorateElement(root: HTMLElement, algo: ParsedAlgorithm): void {
+const BOLD_TAGS = new Set(["STRONG", "B"]);
+
+export interface ReadingOptions {
+  skipWordAfterBold: boolean;
+}
+
+export function decorateElement(root: HTMLElement, algo: ParsedAlgorithm, opts: ReadingOptions): void {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node: Node) {
       const text = node.nodeValue;
@@ -28,15 +34,25 @@ export function decorateElement(root: HTMLElement, algo: ParsedAlgorithm): void 
   }
 
   for (const textNode of targets) {
-    replaceTextNode(textNode, algo);
+    const skipFirst = opts.skipWordAfterBold && isAfterBold(textNode);
+    replaceTextNode(textNode, algo, skipFirst);
   }
 }
 
-function replaceTextNode(node: Text, algo: ParsedAlgorithm): void {
+function isAfterBold(node: Text): boolean {
+  const prev = node.previousSibling;
+  if (!prev || prev.nodeType !== Node.ELEMENT_NODE) return false;
+  return BOLD_TAGS.has((prev as Element).tagName);
+}
+
+function replaceTextNode(node: Text, algo: ParsedAlgorithm, skipFirst: boolean): void {
   const text = node.nodeValue ?? "";
   if (text.length < 2) return;
 
-  const spans = findWordSpans(text, algo);
+  let spans = findWordSpans(text, algo);
+  if (skipFirst && spans.length > 0) {
+    spans = spans.slice(1);
+  }
   if (spans.length === 0) return;
 
   const frag = document.createDocumentFragment();
